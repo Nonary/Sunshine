@@ -111,6 +111,7 @@ namespace remote_display_topology {
     bool reapply_composed_topology();
     void rollback_normal_game_identity(const std::string &client_uuid, std::uint64_t token);
     void release_normal_game_identity(const std::string &client_uuid, std::uint64_t token);
+    void release_all_normal_game_identities();
     void note_lease_lost(const std::string &client_uuid);
     void disconnect_monitor(const std::string &client_uuid);
     void unpair_client(const std::string &client_uuid);
