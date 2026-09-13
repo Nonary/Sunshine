@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -187,19 +187,22 @@ namespace VibeshineInstaller {
       var showInstallOptions = showInstallLocation
         || _showInstallVirtualDisplayOption
         || _showInstallVirtualGamepadOption;
-      var useCompactUpdateLayout = !BuildFlavor.IsUninstallOnly && _installedProduct != null && !showInstallOptions;
+
       var displayVersion = GetTargetVersionText();
       Title = (BuildFlavor.IsUninstallOnly ? "Vibeshine Uninstaller v" : "Vibeshine Installer v") + displayVersion;
       Width = 720;
-      Height = _showInstallVirtualGamepadOption ? 700 : showInstallOptions ? 620 : useCompactUpdateLayout ? 430 : 500;
+      Height = Math.Min(showInstallLocation ? 650 : showInstallOptions ? 520 : 420, SystemParameters.WorkArea.Height);
       MinWidth = 690;
-      MinHeight = _showInstallVirtualGamepadOption ? 660 : showInstallOptions ? 580 : useCompactUpdateLayout ? 410 : 470;
+      MinHeight = Math.Min(420, SystemParameters.WorkArea.Height);
       WindowStartupLocation = WindowStartupLocation.CenterScreen;
       ResizeMode = ResizeMode.CanMinimize;
       WindowStyle = WindowStyle.None;
       AllowsTransparency = false;
       Background = CreateBackgroundBrush();
       FontFamily = new FontFamily("Segoe UI");
+      FontSize = 13;
+      UseLayoutRounding = true;
+      TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
       var root = new Grid {
         Background = new SolidColorBrush(Color.FromRgb(6, 10, 24))
@@ -272,13 +275,9 @@ namespace VibeshineInstaller {
       titleGrid.Children.Add(_titleCloseButton);
 
       var card = new Border {
-        CornerRadius = new CornerRadius(18),
-        Margin = new Thickness(20, 10, 20, 12),
-        Padding = new Thickness(20),
-        Background = new SolidColorBrush(Color.FromArgb(238, 14, 20, 36)),
-        BorderBrush = new SolidColorBrush(Color.FromArgb(145, 99, 102, 241)),
-        BorderThickness = new Thickness(1.2),
-        VerticalAlignment = VerticalAlignment.Top
+        Margin = new Thickness(28, 20, 28, 24),
+        Background = Brushes.Transparent,
+        VerticalAlignment = VerticalAlignment.Stretch
       };
       Grid.SetRow(card, 1);
       root.Children.Add(card);
@@ -419,22 +418,41 @@ namespace VibeshineInstaller {
       overlayButtons.Children.Add(_overlayPrimaryButton);
 
       var cardGrid = new Grid();
-      cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+      cardGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
       cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
       card.Child = cardGrid;
 
       var contentStack = new StackPanel {
         Orientation = Orientation.Vertical
       };
-      Grid.SetRow(contentStack, 0);
-      cardGrid.Children.Add(contentStack);
+      var contentScroll = new ScrollViewer {
+        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        Content = contentStack,
+        Padding = new Thickness(0, 0, 8, 0)
+      };
+      Grid.SetRow(contentScroll, 0);
+      cardGrid.Children.Add(contentScroll);
+      contentStack.Children.Add(new TextBlock {
+        Text = BuildFlavor.IsUninstallOnly ? "Uninstall Vibeshine" : "Set up Vibeshine",
+        FontSize = 28,
+        FontWeight = FontWeights.SemiBold,
+        Foreground = Brushes.White,
+        Margin = new Thickness(0, 0, 0, 6)
+      });
+      contentStack.Children.Add(new TextBlock {
+        Text = BuildFlavor.IsUninstallOnly ? "Manage your installation on this PC." : "Your games. Streamed from this PC.",
+        FontSize = 14,
+        Foreground = new SolidColorBrush(Color.FromRgb(167, 180, 202)),
+        Margin = new Thickness(0, 0, 0, 24)
+      });
 
       _installSection = new Border {
         CornerRadius = new CornerRadius(10),
         Padding = new Thickness(16),
         Margin = new Thickness(0, 0, 0, 10),
-        Background = new SolidColorBrush(Color.FromArgb(44, 99, 102, 241)),
-        BorderBrush = new SolidColorBrush(Color.FromArgb(112, 128, 133, 255)),
+        Background = new SolidColorBrush(Color.FromRgb(17, 25, 42)),
+        BorderBrush = new SolidColorBrush(Color.FromRgb(43, 55, 76)),
         BorderThickness = new Thickness(1)
       };
       contentStack.Children.Add(_installSection);
@@ -515,6 +533,7 @@ namespace VibeshineInstaller {
         Margin = new Thickness(0, 0, 0, 8),
         ToolTip = "Choose which bundled virtual display driver Vibeshine uses. The Vibeshine Display Driver is the recommended default."
       };
+      ApplyDriverComboBoxStyle(_virtualDisplayDriverComboBox);
       _virtualDisplayDriverComboBox.Items.Add(new ComboBoxItem {
         Content = "Vibeshine Display Driver (recommended)"
       });
@@ -524,80 +543,18 @@ namespace VibeshineInstaller {
       _virtualDisplayDriverComboBox.SelectedIndex = _useSudoVdaSelectedInConfig ? 1 : 0;
 
       var installVirtualDisplayHintText = new TextBlock {
-        Text = "The Vibeshine Display Driver is installed and selected by default for virtual displays. Pick SudoVDA (legacy) only if you need to keep using the previous driver.",
+        Text = "Use the recommended driver, or select SudoVDA for legacy compatibility.",
         FontSize = 12,
         Foreground = new SolidColorBrush(Color.FromRgb(190, 208, 236)),
         TextWrapping = TextWrapping.Wrap
       };
 
-      var tipsSection = new Border {
-        CornerRadius = new CornerRadius(10),
-        Padding = new Thickness(16),
-        Margin = new Thickness(0, 0, 0, 10),
-        Background = new SolidColorBrush(Color.FromArgb(34, 56, 189, 248)),
-        BorderBrush = new SolidColorBrush(Color.FromArgb(92, 99, 157, 219)),
-        BorderThickness = new Thickness(1)
-      };
-      contentStack.Children.Add(tipsSection);
-
-      var tipsStack = new StackPanel {
-        Orientation = Orientation.Vertical
-      };
-      tipsSection.Child = tipsStack;
-
-      tipsStack.Children.Add(new TextBlock {
-        Text = "Quick Tips",
-        FontSize = 14,
-        FontWeight = FontWeights.SemiBold,
-        Foreground = Brushes.White,
-        Margin = new Thickness(0, 0, 0, 4)
-      });
-
-      tipsStack.Children.Add(new TextBlock {
-        Text = "You can install or upgrade Vibeshine while actively streaming. No system restart is required. "
-          + "After you click Install or Upgrade, the current streaming session will end, then you can usually "
-          + "start streaming again after about 1–2 minutes without issues.",
-        FontSize = 12.5,
-        Foreground = new SolidColorBrush(Color.FromRgb(211, 220, 246)),
-        Margin = new Thickness(0, 0, 0, 10),
-        TextWrapping = TextWrapping.Wrap
-      });
-
-      tipsStack.Children.Add(new TextBlock {
-        Text = "You can also install from an SSH session on this host (run in an elevated shell):",
-        FontSize = 13,
-        Foreground = new SolidColorBrush(Color.FromRgb(203, 219, 241)),
-        Margin = new Thickness(0, 0, 0, 6),
-        TextWrapping = TextWrapping.Wrap
-      });
-
-      tipsStack.Children.Add(new TextBox {
-        Text = "VibeshineSetup.exe /qn /norestart",
-        IsReadOnly = true,
-        FontFamily = new FontFamily("Consolas"),
-        FontSize = 12.5,
-        Margin = new Thickness(0, 0, 0, 8),
-        Padding = new Thickness(10, 8, 10, 8),
-        Background = new SolidColorBrush(Color.FromRgb(16, 24, 42)),
-        Foreground = new SolidColorBrush(Color.FromRgb(226, 235, 250)),
-        BorderBrush = new SolidColorBrush(Color.FromRgb(82, 96, 141)),
-        CaretBrush = new SolidColorBrush(Color.FromRgb(226, 235, 250))
-      });
-
-      tipsStack.Children.Add(new TextBlock {
-        Text = "Click the buttons below to proceed.",
-        FontSize = 12.5,
-        Foreground = new SolidColorBrush(Color.FromRgb(211, 220, 246)),
-        Margin = new Thickness(0, 0, 0, 0),
-        TextWrapping = TextWrapping.Wrap
-      });
-
       _installVirtualDisplaySection = new Border {
         CornerRadius = new CornerRadius(10),
         Padding = new Thickness(16),
         Margin = new Thickness(0, 0, 0, 10),
-        Background = new SolidColorBrush(Color.FromArgb(44, 99, 102, 241)),
-        BorderBrush = new SolidColorBrush(Color.FromArgb(112, 128, 133, 255)),
+        Background = new SolidColorBrush(Color.FromRgb(17, 25, 42)),
+        BorderBrush = new SolidColorBrush(Color.FromRgb(43, 55, 76)),
         BorderThickness = new Thickness(1)
       };
       contentStack.Children.Add(_installVirtualDisplaySection);
@@ -614,8 +571,8 @@ namespace VibeshineInstaller {
         CornerRadius = new CornerRadius(10),
         Padding = new Thickness(16),
         Margin = new Thickness(0, 0, 0, 10),
-        Background = new SolidColorBrush(Color.FromArgb(44, 99, 102, 241)),
-        BorderBrush = new SolidColorBrush(Color.FromArgb(112, 128, 133, 255)),
+        Background = new SolidColorBrush(Color.FromRgb(17, 25, 42)),
+        BorderBrush = new SolidColorBrush(Color.FromRgb(43, 55, 76)),
         BorderThickness = new Thickness(1)
       };
       contentStack.Children.Add(_installVirtualGamepadSection);
@@ -647,12 +604,14 @@ namespace VibeshineInstaller {
         TextWrapping = TextWrapping.Wrap
       });
 
-      var divider = new System.Windows.Shapes.Rectangle {
-        Height = 1,
-        Fill = new SolidColorBrush(Color.FromArgb(120, 88, 104, 124)),
-        Margin = new Thickness(0, 0, 0, 10)
-      };
-      contentStack.Children.Add(divider);
+      contentStack.Children.Add(new TextBlock {
+        Text = BuildFlavor.IsUninstallOnly
+          ? "You can choose whether to keep your settings before uninstalling."
+          : "Setup will end any active stream. Reconnect once installation finishes.",
+        Foreground = new SolidColorBrush(Color.FromRgb(167, 180, 202)),
+        TextWrapping = TextWrapping.Wrap,
+        Margin = new Thickness(0, 6, 0, 12)
+      });
 
       var statusCard = new Border {
         CornerRadius = new CornerRadius(10),
@@ -662,7 +621,7 @@ namespace VibeshineInstaller {
         BorderBrush = new SolidColorBrush(Color.FromArgb(92, 99, 157, 219)),
         BorderThickness = new Thickness(1)
       };
-      statusCard.Visibility = Visibility.Collapsed;
+      statusCard.Visibility = BuildFlavor.IsUninstallOnly ? Visibility.Visible : Visibility.Collapsed;
       contentStack.Children.Add(statusCard);
 
       var statusStack = new StackPanel {
@@ -695,7 +654,7 @@ namespace VibeshineInstaller {
       statusStack.Children.Add(_statusDetailText);
 
       var footerGrid = new Grid {
-        Margin = new Thickness(0)
+        Margin = new Thickness(0, 16, 0, 0)
       };
       footerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
       footerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -749,19 +708,19 @@ namespace VibeshineInstaller {
       _continueButton.MouseLeave += ContinueButtonMouseLeave;
       _continueButton.Click += ContinueClicked;
       ApplyFlatButtonTemplate(_continueButton, 8);
-      Grid.SetColumn(_continueButton, 1);
+      Grid.SetColumn(_continueButton, 4);
       buttonRow.Children.Add(_continueButton);
 
       _uninstallButton = new Button {
-        Content = "Uninstall Vibeshine",
+        Content = "Uninstall",
         Height = 40,
-        MinWidth = 152,
+        MinWidth = 90,
         Margin = new Thickness(10, 0, 0, 0),
         Padding = new Thickness(16, 0, 16, 0),
         FontWeight = FontWeights.SemiBold,
-        Background = new SolidColorBrush(Color.FromRgb(225, 29, 72)),
+        Background = new SolidColorBrush(Color.FromRgb(16, 24, 42)),
         Foreground = new SolidColorBrush(Color.FromRgb(245, 249, 255)),
-        BorderBrush = new SolidColorBrush(Color.FromRgb(251, 113, 133)),
+        BorderBrush = new SolidColorBrush(Color.FromRgb(82, 96, 141)),
         BorderThickness = new Thickness(1.5),
         Visibility = Visibility.Visible
       };
@@ -769,7 +728,7 @@ namespace VibeshineInstaller {
       _uninstallButton.MouseLeave += UninstallButtonMouseLeave;
       _uninstallButton.Click += UninstallNowClicked;
       ApplyFlatButtonTemplate(_uninstallButton, 8);
-      Grid.SetColumn(_uninstallButton, 2);
+      Grid.SetColumn(_uninstallButton, BuildFlavor.IsUninstallOnly ? 4 : 1);
       buttonRow.Children.Add(_uninstallButton);
 
       _licenseButton = new Button {
@@ -786,7 +745,9 @@ namespace VibeshineInstaller {
       };
       _licenseButton.Click += LicenseClicked;
       ApplyFlatButtonTemplate(_licenseButton, 8);
-      Grid.SetColumn(_licenseButton, 3);
+      Grid.SetColumn(_licenseButton, 0);
+      _licenseButton.HorizontalAlignment = HorizontalAlignment.Left;
+      _licenseButton.Margin = new Thickness(0);
       buttonRow.Children.Add(_licenseButton);
 
       _closeButton = new Button {
@@ -804,7 +765,7 @@ namespace VibeshineInstaller {
       };
       _closeButton.Click += (sender, eventArgs) => Close();
       ApplyFlatButtonTemplate(_closeButton, 8);
-      Grid.SetColumn(_closeButton, 4);
+      Grid.SetColumn(_closeButton, 3);
       buttonRow.Children.Add(_closeButton);
 
       _continueButton.Content = BuildFlavor.IsUninstallOnly ? "Uninstall Vibeshine" : BuildInstallButtonLabel();
@@ -816,7 +777,9 @@ namespace VibeshineInstaller {
             : "Uninstall is unavailable. Choose Install Vibeshine to continue.",
           _statusNormalBrush);
       } else {
-        SetStatus("Ready.", string.Empty, _statusNormalBrush);
+        SetStatus(BuildFlavor.IsUninstallOnly ? "Ready to uninstall" : "Ready.",
+          BuildFlavor.IsUninstallOnly ? "Vibeshine is installed on this PC. Choose Uninstall to review removal options." : string.Empty,
+          _statusNormalBrush);
       }
       UpdateActionUiState();
       Loaded += InstallerWindowLoaded;
@@ -830,6 +793,51 @@ namespace VibeshineInstaller {
       brush.GradientStops.Add(new GradientStop(Color.FromRgb(14, 20, 36), 0.42));
       brush.GradientStops.Add(new GradientStop(Color.FromRgb(12, 18, 34), 1.0));
       return brush;
+    }
+
+    private static void ApplyDriverComboBoxStyle(ComboBox comboBox) {
+      comboBox.Width = 340;
+      comboBox.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"
+<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='ComboBox'>
+  <Grid>
+    <ToggleButton Focusable='False' IsChecked='{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}' ClickMode='Press'>
+      <ToggleButton.Template>
+        <ControlTemplate TargetType='ToggleButton'>
+          <Border x:Name='Surface' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' Background='#10182A' BorderBrush='#52608D' BorderThickness='1' CornerRadius='6'>
+            <TextBlock Text='⌄' Foreground='#E8EFFD' HorizontalAlignment='Right' VerticalAlignment='Center' Margin='0,0,12,0'/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='Surface' Property='BorderBrush' Value='#A5B4FC'/></Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </ToggleButton.Template>
+    </ToggleButton>
+    <ContentPresenter Content='{TemplateBinding SelectionBoxItem}' ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}' IsHitTestVisible='False' Margin='12,8,32,8' VerticalAlignment='Center' TextElement.Foreground='#E8EFFD'/>
+    <Popup Name='PART_Popup' IsOpen='{TemplateBinding IsDropDownOpen}' Placement='Bottom' AllowsTransparency='True' Focusable='False'>
+      <Border Background='#10182A' BorderBrush='#52608D' BorderThickness='1' CornerRadius='6' Padding='4' MinWidth='{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}'>
+        <ScrollViewer MaxHeight='240'><ItemsPresenter KeyboardNavigation.DirectionalNavigation='Contained'/></ScrollViewer>
+      </Border>
+    </Popup>
+  </Grid>
+  <ControlTemplate.Triggers>
+    <Trigger Property='IsKeyboardFocusWithin' Value='True'><Setter Property='Effect'><Setter.Value><DropShadowEffect Color='#A5B4FC' ShadowDepth='0' BlurRadius='4'/></Setter.Value></Setter></Trigger>
+    <Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.58'/></Trigger>
+  </ControlTemplate.Triggers>
+</ControlTemplate>");
+      comboBox.ItemContainerStyle = (Style)System.Windows.Markup.XamlReader.Parse(@"
+<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='ComboBoxItem'>
+  <Setter Property='Foreground' Value='#E8EFFD'/>
+  <Setter Property='Padding' Value='10,8'/>
+  <Setter Property='Template'><Setter.Value>
+    <ControlTemplate TargetType='ComboBoxItem'>
+      <Border Name='Item' Background='Transparent' CornerRadius='4' Padding='{TemplateBinding Padding}'><ContentPresenter/></Border>
+      <ControlTemplate.Triggers>
+        <Trigger Property='IsHighlighted' Value='True'><Setter TargetName='Item' Property='Background' Value='#303D60'/></Trigger>
+        <Trigger Property='IsSelected' Value='True'><Setter TargetName='Item' Property='Background' Value='#303D60'/></Trigger>
+      </ControlTemplate.Triggers>
+    </ControlTemplate>
+  </Setter.Value></Setter>
+</Style>");
     }
 
     private static void ApplyFlatButtonTemplate(Button button, double cornerRadius) {
@@ -875,6 +883,9 @@ namespace VibeshineInstaller {
       disabledTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.58));
       template.Triggers.Add(disabledTrigger);
 
+      var focusTrigger = new Trigger { Property = UIElement.IsKeyboardFocusedProperty, Value = true };
+      focusTrigger.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.White));
+      template.Triggers.Add(focusTrigger);
       return template;
     }
 
@@ -1006,8 +1017,8 @@ namespace VibeshineInstaller {
     }
 
     private void UninstallButtonMouseLeave(object sender, MouseEventArgs e) {
-      _uninstallButton.Background = new SolidColorBrush(Color.FromRgb(225, 29, 72));
-      _uninstallButton.BorderBrush = new SolidColorBrush(Color.FromRgb(251, 113, 133));
+      _uninstallButton.Background = new SolidColorBrush(Color.FromRgb(16, 24, 42));
+      _uninstallButton.BorderBrush = new SolidColorBrush(Color.FromRgb(82, 96, 141));
     }
 
     private void BrowseClicked(object sender, RoutedEventArgs e) {
@@ -1692,14 +1703,14 @@ namespace VibeshineInstaller {
         IsChecked = false
       };
       var removeGamepadDriverCheckBox = new CheckBox {
-        Content = "Also remove Vibeshine virtual gamepad driver package",
+        Content = new TextBlock { Text = "Also remove Vibeshine virtual gamepad driver package", TextWrapping = TextWrapping.Wrap },
         FontSize = 13,
         Foreground = new SolidColorBrush(Color.FromRgb(226, 235, 250)),
         Margin = new Thickness(0, 0, 0, 8),
         IsChecked = false
       };
       var deleteFolderCheckBox = new CheckBox {
-        Content = "Factory reset (deletes Vibeshine settings, preserves user-added files)",
+        Content = new TextBlock { Text = "Factory reset (deletes Vibeshine settings, preserves user-added files)", TextWrapping = TextWrapping.Wrap },
         FontSize = 13,
         Foreground = new SolidColorBrush(Color.FromRgb(226, 235, 250)),
         Margin = new Thickness(0, 0, 0, 0),
